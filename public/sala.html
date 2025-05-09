@@ -12,7 +12,9 @@
         .blinking-text { animation: blinker 1.5s linear infinite; }
         @keyframes blinker { 50% { opacity: 0.4; } }
         .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background-color: #000; }
-        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%;}
+        /* O iframe agora será criado dinamicamente pela API do YouTube dentro desta div */
+        #youtube-player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #e0e7ff; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #a5b4fc; border-radius: 10px; }
@@ -56,7 +58,8 @@
             <div class="md:col-span-2 bg-black p-1 rounded-xl shadow-lg flex flex-col">
                  <h2 class="text-2xl font-semibold text-white mb-3 text-center pt-3">Entretenimento</h2>
                 <div id="videoPlayerContainer" class="video-container rounded-md flex-grow">
-                    <p class="flex items-center justify-center h-full text-white text-lg">Nenhuma playlist selecionada.</p>
+                    <div id="youtube-player"></div>
+                    <p id="noPlaylistMessage" class="flex items-center justify-center h-full text-white text-lg" style="display: none;">Nenhuma playlist selecionada.</p>
                 </div>
             </div>
         </div>
@@ -65,6 +68,8 @@
     <footer class="text-center py-4 bg-blue-700 text-white">
         <p>© <span id="currentYear"></span> UBS SESC Atendimento. Tenha um ótimo dia!</p>
     </footer>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -75,12 +80,19 @@
         let callIntervalId = null;
         let lastCalledPatientInfo = null;
 
+        // Variáveis para o Player do YouTube
+        let player; // Objeto do player do YouTube
+        let normalVolume = 40; // Volume normal do vídeo (0-100)
+        let reducedVolume = 10; // Volume reduzido durante a chamada (0-100)
+        let currentPlaylistEmbedUrl = null; // Armazena a URL DE EMBED da playlist atual
+
         const patientCalledSection = document.getElementById('patientCalledSection');
         const professionalsOnlineDisplayEl = document.getElementById('professionalsOnlineDisplay').querySelector('span');
         const waitingListDisplay = document.getElementById('waitingListDisplay');
         const videoPlayerContainer = document.getElementById('videoPlayerContainer');
         const currentDateEl = document.getElementById('currentDate');
         const currentTimeEl = document.getElementById('currentTime');
+        const noPlaylistMessageEl = document.getElementById('noPlaylistMessage');
         document.getElementById('currentYear').textContent = new Date().getFullYear();
 
          // --- Lógica de Conexão e Eventos do Socket ---
@@ -104,7 +116,8 @@
             } else {
                 clearCalledPatient();
             }
-            updateVideoPlayer(state.playlistUrl);
+             // Usa state.playlistEmbedUrl para atualizar o player
+            updateVideoPlayer(state.playlistEmbedUrl);
              updateProfessionalDisplay(state.professionals);
         });
 
@@ -117,16 +130,31 @@
         socket.on('patient_called', (calledPatientInfo) => {
             console.log('Paciente sendo chamado:', calledPatientInfo);
             displayCalledPatient(calledPatientInfo, calledPatientInfo.calledBy);
+            // Reduz o volume do vídeo ao iniciar a chamada
+            if (player && typeof player.setVolume === 'function') { // Verifica se o player existe e o método setVolume está disponível
+                player.setVolume(reducedVolume);
+                 console.log("Volume do vídeo reduzido.");
+            } else {
+                 console.warn("Player do YouTube não pronto ou setVolume não disponível para reduzir volume.");
+            }
         });
 
         socket.on('call_stopped', () => {
             console.log('Chamada parada.');
             clearCalledPatient();
+            // Restaura o volume do vídeo ao parar a chamada
+            if (player && typeof player.setVolume === 'function') { // Verifica se o player existe e o método setVolume está disponível
+                player.setVolume(normalVolume);
+                 console.log("Volume do vídeo restaurado.");
+            } else {
+                 console.warn("Player do YouTube não pronto ou setVolume não disponível para restaurar volume.");
+            }
         });
 
-        socket.on('video_updated', (playlistUrl) => {
-            console.log('Playlist atualizada recebida:', playlistUrl);
-            updateVideoPlayer(playlistUrl);
+        // Recebe a URL de embed da playlist do servidor
+        socket.on('video_updated', (playlistEmbedUrl) => {
+            console.log('Playlist atualizada recebida:', playlistEmbedUrl);
+            updateVideoPlayer(playlistEmbedUrl);
         });
 
          socket.on('professional_list_updated', (professionalList) => {
@@ -135,10 +163,132 @@
              updateProfessionalDisplay(professionalNamesAndRoles);
          });
 
-        // --- Funções de UI e Exibição ---
+        // --- Funções da API do Player do YouTube ---
+
+        // Esta função é chamada automaticamente quando a API do YouTube estiver pronta (Nome PADRÃO da função)
+        function onYouTubeIframeAPIReady() {
+            console.log("API do YouTube IFrame Player Ready (Função Padrão).");
+             // Cria o player assim que a API estiver pronta, usando a URL de embed armazenada
+             if (currentPlaylistEmbedUrl) {
+                 createPlayer(currentPlaylistEmbedUrl);
+             } else {
+                 // Garante que a mensagem "Nenhuma playlist selecionada" esteja visível se não houver playlist
+                 updateVideoPlayer(null); // Isso irá ocultar o player e mostrar a mensagem
+             }
+        }
+
+        // Cria ou atualiza o player do YouTube
+        function createPlayer(playlistEmbedUrl) {
+             // Verifica se a URL de embed é válida e extrai o ID da playlist (redundante se o backend já validar, mas seguro)
+             const playlistIdMatch = playlistEmbedUrl ? playlistEmbedUrl.match(/[?&]list=([a-zA-Z0-9_-]+)/) : null;
+             const playlistId = playlistIdMatch ? playlistIdMatch[1] : null;
+
+             if (!playlistId) {
+                 console.error("ID da playlist não encontrado na URL de embed:", playlistEmbedUrl);
+                 updateVideoPlayer(null);
+                 return;
+             }
+
+            // Se já existe um player, destrua-o primeiro para evitar múltiplos players
+            if (player && typeof player.destroy === 'function') {
+                player.destroy();
+                console.log("Player do YouTube existente destruído.");
+            }
+
+            // Oculta a mensagem padrão
+            if (noPlaylistMessageEl) noPlaylistMessageEl.style.display = 'none';
+
+            // Cria um novo player
+            player = new YT.Player('youtube-player', {
+                // A altura e largura serão controladas pelo CSS do contêiner #youtube-player
+                // height: '100%',
+                // width: '100%',
+                playerVars: {
+                    'listType': 'playlist',
+                    'list': playlistId, // Define o ID da playlist
+                    'autoplay': 1, // Autoplay (pode depender das políticas do navegador)
+                    'mute': 1, // Mudo inicialmente para aumentar a chance de autoplay funcionar
+                    'loop': 1, // Repetir a playlist
+                    'controls': 1, // Mostrar controles
+                    'showinfo': 0, // Não mostrar título do vídeo
+                    'rel': 0, // Não mostrar vídeos relacionados ao final
+                    'enablejsapi': 1, // Habilitar a API JavaScript (essencial)
+                    'origin': window.location.origin // Importante para a API em alguns casos
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onError': onPlayerError
+                    // Outros eventos: onStateChange, onPlaybackQualityChange, onPlaybackRateChange, onApiChange
+                     // onStateChange é útil para detectar quando o player começa/para de tocar, etc.
+                }
+            });
+            console.log("Player do YouTube criado para playlist com ID:", playlistId);
+        }
+
+        // Chamada quando o player estiver pronto e a API puder ser usada
+        function onPlayerReady(event) {
+            console.log("Player do YouTube pronto.");
+             // Defina o volume inicial após o player estar pronto
+            if (player && typeof player.setVolume === 'function') {
+                 player.setVolume(normalVolume);
+                 console.log("Volume inicial do vídeo definido para:", normalVolume);
+                 // Opcional: Remover o mudo após a interação do usuário (não implementado aqui)
+                 // player.unMute();
+            }
+             // O player pode estar pausado inicialmente dependendo das políticas de autoplay do navegador.
+             // event.target.playVideo(); // Tentar iniciar a reprodução
+        }
+
+        // Chamada se ocorrer um erro no player
+        function onPlayerError(event) {
+            console.error("Erro no Player do YouTube:", event.data);
+             // Mostra a mensagem de "Nenhuma playlist selecionada" em caso de erro
+             updateVideoPlayer(null); // Isso destrói o player e mostra a mensagem
+
+             let errorMessage = "Ocorreu um erro ao carregar o vídeo/playlist.";
+              if (event.data === 2) errorMessage = "ID do vídeo/playlist inválido.";
+             else if (event.data === 100) errorMessage = "Vídeo não encontrado.";
+             else if (event.data === 101 || event.data === 150) errorMessage = "Vídeo não pode ser reproduzido neste player (privado ou restrito).";
+              else if (event.data === 5) errorMessage = "Erro de reprodução (Flash player não habilitado ou outro).";
+
+             console.error("Mensagem de erro do player:", errorMessage);
+             // Opcional: Exibir a mensagem de erro na tela para o usuário
+        }
+
+
+        // Esta função agora gerencia a criação/remoção do player e a exibição da mensagem
+        function updateVideoPlayer(playlistEmbedUrl) {
+             currentPlaylistEmbedUrl = playlistEmbedUrl; // Armazena a URL de embed recebida
+
+            if (playlistEmbedUrl) {
+                 // Se a API do YouTube já estiver pronta, cria o player
+                 if (window.YT && window.YT.Player) {
+                    createPlayer(playlistEmbedUrl);
+                 } else {
+                    // Se a API ainda não estiver pronta, ela será carregada (pela tag script)
+                    // e chamará onYouTubeIframeAPIReady, que verificará currentPlaylistEmbedUrl
+                    // e criará o player.
+                    console.log("API do YouTube ainda não pronta. Player será criado quando onYouTubeIframeAPIReady for chamada.");
+                 }
+                 // Oculta a mensagem padrão assim que uma URL é recebida
+                if (noPlaylistMessageEl) noPlaylistMessageEl.style.display = 'none';
+            } else {
+                 // Se a URL for nula ou vazia, destrói o player existente (se houver)
+                if (player && typeof player.destroy === 'function') {
+                    player.destroy();
+                    player = null; // Limpa a referência
+                    console.log("Player do YouTube destruído (playlist removida).");
+                }
+                 // Mostra a mensagem padrão
+                if (noPlaylistMessageEl) noPlaylistMessageEl.style.display = 'flex';
+            }
+        }
+
+
+        // --- Funções de UI e Exibição (mantidas) ---
 
         function loadVoices() {
-            // Busca por vozes em português, priorizando nomes que indicam "feminina" ou "Brazil"
+             // Busca por vozes em português, priorizando nomes que indicam "feminina" ou "Brazil"
             voices = synth.getVoices().filter(voice =>
                 voice.lang.startsWith('pt') &&
                 (voice.name.toLowerCase().includes('female') ||
@@ -146,20 +296,17 @@
                  voice.name.toLowerCase().includes('brazil'))
             );
 
-             // Se não encontrar vozes femininas em português com os termos específicos, pega qualquer voz em português
              if (voices.length === 0) {
                  voices = synth.getVoices().filter(voice => voice.lang.startsWith('pt'));
              }
 
-             // Se ainda não encontrar vozes em português, pega a primeira voz disponível
              if (voices.length === 0 && synth.getVoices().length > 0) {
-                 voices = [synth.getVoices()[0]]; // Pega a primeira voz disponível como fallback
+                 voices = [synth.getVoices()[0]];
              }
 
             if (voices.length === 0 && speechSynthesis.onvoiceschanged !== undefined) {
-                // Se as vozes ainda não foram carregadas (evento onvoiceschanged ainda pode disparar)
                 speechSynthesis.onvoiceschanged = () => {
-                    loadVoices(); // Tenta carregar novamente quando as vozes mudarem
+                    loadVoices();
                     console.log("Vozes carregadas após evento onvoiceschanged.");
                 };
             } else if (voices.length > 0) {
@@ -168,44 +315,9 @@
                  console.warn("Nenhuma voz de síntese de fala encontrada.");
             }
         }
-        loadVoices(); // Tenta carregar as vozes inicialmente
+        // Garante que a função loadVoices seja chamada APÓS o DOM estar completamente carregado
+        document.addEventListener('DOMContentLoaded', loadVoices);
 
-        function speak(text) {
-            if (!synth) {
-                 console.warn("Speech Synthesis API não suportada neste navegador.");
-                 return;
-            }
-            if (synth.speaking) {
-                synth.cancel();
-            }
-            const utterance = new SpeechSynthesisUtterance(text);
-
-            // Usa a primeira voz encontrada na nossa lista priorizada (feminina PT, depois qualquer PT, depois primeira disponível)
-            if (voices.length > 0) {
-                utterance.voice = voices[0];
-                utterance.lang = voices[0].lang; // Define a linguagem baseada na voz selecionada
-                 console.log("Usando voz:", voices[0].name, voices[0].lang);
-            } else {
-                 utterance.lang = 'pt-BR'; // Fallback para pt-BR se nenhuma voz for encontrada
-                 console.warn("Nenhuma voz selecionada, usando lang padrão pt-BR.");
-            }
-
-            // Ajustes de voz para tentar soar mais natural (podem variar por voz/navegador)
-            utterance.rate = 1.0; // Velocidade (1.0 é normal)
-            utterance.pitch = 1.0; // Tom (1.0 é normal) - experimente 1.05 ou 0.95 se quiser testar tons diferentes
-
-            utterance.onstart = () => {
-                patientCalledSection.classList.add('blinking-text');
-            };
-            utterance.onend = () => {
-                 setTimeout(() => patientCalledSection.classList.remove('blinking-text'), 1000);
-            };
-            utterance.onerror = (event) => {
-                console.error("Erro na síntese de voz:", event);
-                patientCalledSection.classList.remove('blinking-text');
-            }
-            synth.speak(utterance);
-        }
 
         function updateDateTime() {
             const now = new Date();
@@ -281,25 +393,6 @@
                 waitingListDisplay.appendChild(div);
             });
         }
-
-        function updateVideoPlayer(playlistUrl) {
-            if (videoPlayerContainer) {
-                if (playlistUrl) {
-                    videoPlayerContainer.innerHTML = `
-                        <iframe
-                            src="${playlistUrl}"
-                            frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowfullscreen>
-                        </iframe>`;
-                } else {
-                    videoPlayerContainer.innerHTML = '<p class="flex items-center justify-center h-full text-white text-lg">Nenhuma playlist selecionada.</p>';
-                }
-            } else {
-                 console.error("Elemento videoPlayerContainer não encontrado!");
-            }
-        }
-
 
         function updateProfessionalDisplay(professionalNamesAndRoles) {
             if (professionalNamesAndRoles && professionalNamesAndRoles.length > 0) {
