@@ -5,8 +5,6 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-// Configura o Socket.IO para permitir conexões de diferentes origens (importante para desenvolvimento local/testes se as portas forem diferentes)
-// Em produção, é melhor configurar a origem específica do seu frontend.
 const io = socketIo(server, {
     cors: {
         origin: "*", // Permitir de qualquer origem durante o desenvolvimento
@@ -20,7 +18,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 let patientQueue = []; // Fila de pacientes na memória do servidor
 let currentlyCallingPatient = null; // Paciente sendo chamado no momento
 let videoUrl = null; // URL do vídeo para a sala de espera
-let connectedDoctors = {}; // Para rastrear médicos conectados: { socketId: doctorName }
+// Alterado para armazenar objetos { name: 'Nome', role: 'Doutor/Enfermeira' }
+let connectedProfessionals = {}; // Para rastrear profissionais conectados: { socketId: { name: 'Nome', role: 'Role' } }
+
 
 io.on('connection', (socket) => {
     console.log('Novo cliente conectado:', socket.id);
@@ -31,37 +31,45 @@ io.on('connection', (socket) => {
         patients: patientQueue,
         calling: currentlyCallingPatient,
         video: videoUrl,
-        doctors: Object.values(connectedDoctors) // Envia a lista de nomes de médicos online
+        // Envia a lista de profissionais online (nome e role)
+        professionals: Object.values(connectedProfessionals)
     });
 
-    // --- Eventos do Médico ---
-    socket.on('doctor_login', (doctorName) => {
-        connectedDoctors[socket.id] = doctorName;
-        console.log(`Médico "${doctorName}" logado (ID: ${socket.id}).`);
-        // Opcional: notificar outros clientes que um médico logou/deslogou
-        io.emit('doctor_list_updated', Object.values(connectedDoctors));
+    // --- Eventos do Profissional (Médico/Enfermeira) ---
+    // Evento quando um profissional loga - AGORA RECEBE NOME E ROLE
+    socket.on('professional_login', (professionalInfo) => {
+         if (!professionalInfo || !professionalInfo.name || !professionalInfo.role) {
+             socket.emit('error_message', 'Informações de login inválidas.');
+             return;
+         }
+        connectedProfessionals[socket.id] = professionalInfo; // Armazena o objeto {name, role}
+        console.log(`Profissional "${professionalInfo.name}" (${professionalInfo.role}) logado (ID: ${socket.id}).`);
+        // Notifica outros clientes que a lista de profissionais online atualizou
+        io.emit('professional_list_updated', Object.values(connectedProfessionals));
     });
 
-    socket.on('doctor_logout', () => {
-        const doctorName = connectedDoctors[socket.id];
-        if (doctorName) {
-            delete connectedDoctors[socket.id];
-            console.log(`Médico "${doctorName}" deslogado (ID: ${socket.id}).`);
-            io.emit('doctor_list_updated', Object.values(connectedDoctors));
+    // Evento quando um profissional desloga
+    socket.on('professional_logout', () => {
+        const professionalInfo = connectedProfessionals[socket.id];
+        if (professionalInfo) {
+            delete connectedProfessionals[socket.id];
+            console.log(`Profissional "${professionalInfo.name}" (${professionalInfo.role}) deslogado (ID: ${socket.id}).`);
+            io.emit('professional_list_updated', Object.values(connectedProfessionals));
 
-            // Se o médico estava chamando alguém, parar a chamada
+            // Se o profissional estava chamando alguém, parar a chamada
             if (currentlyCallingPatient && currentlyCallingPatient.calledBySocketId === socket.id) {
                 currentlyCallingPatient = null;
                 io.emit('call_stopped');
-                console.log(`Chamada parada pois o médico "${doctorName}" deslogou.`);
+                console.log(`Chamada parada pois o profissional "${professionalInfo.name}" deslogou.`);
             }
         }
     });
 
+    // Evento para adicionar paciente
     socket.on('add_patient', (patientData) => {
-        const doctorName = connectedDoctors[socket.id];
-        if (!doctorName) {
-            socket.emit('error_message', 'Você precisa estar logado como médico para adicionar pacientes.');
+        const professionalInfo = connectedProfessionals[socket.id];
+        if (!professionalInfo) {
+            socket.emit('error_message', 'Você precisa estar logado para adicionar pacientes.');
             return;
         }
 
@@ -73,48 +81,46 @@ io.on('connection', (socket) => {
         const newPatient = {
             id: 'patient_' + Date.now(),
             name: patientData.name,
-            priority: patientData.priority || 'normal', // Padrão para 'normal' se não especificado
+            priority: patientData.priority || 'normal',
             addedTime: Date.now(),
-            addedByDoctor: doctorName, // Nome do médico que adicionou
-            addedBySocketId: socket.id // ID do socket do médico que adicionou (útil para filtrar)
+            addedBy: professionalInfo, // Armazena o objeto {name, role} de quem adicionou
+            addedBySocketId: socket.id
         };
         patientQueue.push(newPatient);
         sortPatientQueue(); // Ordena a fila
         io.emit('queue_updated', patientQueue); // Envia a fila atualizada para todos os clientes
-        console.log(`Paciente "${newPatient.name}" adicionado por "${doctorName}".`);
+        console.log(`Paciente "${newPatient.name}" adicionado por "${professionalInfo.name}" (${professionalInfo.role}).`);
     });
 
+    // Evento para chamar paciente
     socket.on('call_patient', (patientId) => {
-        const doctorName = connectedDoctors[socket.id];
-         if (!doctorName) {
-            socket.emit('error_message', 'Você precisa estar logado como médico para chamar pacientes.');
+        const professionalInfo = connectedProfessionals[socket.id];
+         if (!professionalInfo) {
+            socket.emit('error_message', 'Você precisa estar logado para chamar pacientes.');
             return;
         }
 
-        // Encontra o paciente na fila
         const patientIndex = patientQueue.findIndex(p => p.id === patientId);
 
         if (patientIndex !== -1 && !currentlyCallingPatient) {
             const patientToCall = patientQueue[patientIndex];
 
-            // Verifica se o médico que está tentando chamar é o mesmo que adicionou o paciente
+            // Verifica se o profissional que está tentando chamar é o mesmo que adicionou o paciente
             if (patientToCall.addedBySocketId === socket.id) {
-                // Remove o paciente da fila principal
                 patientQueue.splice(patientIndex, 1);
 
-                // Define o paciente como sendo chamado
                 currentlyCallingPatient = {
                     ...patientToCall,
-                    calledByDoctor: doctorName, // Nome do médico que está chamando agora
-                    calledBySocketId: socket.id // ID do socket do médico que está chamando agora
+                    calledBy: professionalInfo, // Armazena o objeto {name, role} de quem chamou
+                    calledBySocketId: socket.id
                 };
 
-                io.emit('queue_updated', patientQueue); // Envia a fila atualizada (sem o paciente chamado)
-                io.emit('patient_called', currentlyCallingPatient); // Envia as informações do paciente chamado
-                console.log(`Paciente "${patientToCall.name}" chamado por "${doctorName}".`);
+                io.emit('queue_updated', patientQueue);
+                io.emit('patient_called', currentlyCallingPatient); // Inclui o objeto 'calledBy'
+                console.log(`Paciente "${patientToCall.name}" chamado por "${professionalInfo.name}" (${professionalInfo.role}).`);
             } else {
                 socket.emit('error_message', 'Você só pode chamar pacientes que você adicionou à fila.');
-                 console.log(`Tentativa falha de chamar paciente "${patientToCall.name}" (médico diferente).`);
+                 console.log(`Tentativa falha de chamar paciente "${patientToCall.name}" (profissional diferente).`);
             }
         } else if (currentlyCallingPatient) {
              socket.emit('error_message', `Já há um paciente sendo chamado: ${currentlyCallingPatient.name}.`);
@@ -125,88 +131,83 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Evento para confirmar chegada ou parar chamada
     socket.on('confirm_or_stop_call', (data) => {
-         const doctorName = connectedDoctors[socket.id];
-         if (!doctorName) {
-            socket.emit('error_message', 'Você precisa estar logado como médico para encerrar chamadas.');
+         const professionalInfo = connectedProfessionals[socket.id];
+         if (!professionalInfo) {
+            socket.emit('error_message', 'Você precisa estar logado para encerrar chamadas.');
             return;
         }
 
         if (currentlyCallingPatient && currentlyCallingPatient.id === data.patientId) {
-             // Verifica se o médico que está tentando encerrar a chamada é o mesmo que a iniciou
+             // Verifica se o profissional que está tentando encerrar a chamada é o mesmo que a iniciou
              if (currentlyCallingPatient.calledBySocketId === socket.id) {
                 if (data.confirmed) {
-                    console.log(`Chegada de "${currentlyCallingPatient.name}" confirmada por "${doctorName}".`);
-                    // O paciente é removido da fila ao ser chamado, então não precisa remover aqui.
+                    console.log(`Chegada de "${currentlyCallingPatient.name}" confirmada por "${professionalInfo.name}".`);
                 } else {
-                    console.log(`Chamada de "${currentlyCallingPatient.name}" parada por "${doctorName}".`);
-                    // Opcional: recolocar o paciente na fila se a chamada for parada sem confirmação
-                    // patientQueue.push(currentlyCallingPatient);
-                    // sortPatientQueue();
-                    // io.emit('queue_updated', patientQueue); // Envia a fila atualizada se recolocou
+                    console.log(`Chamada de "${currentlyCallingPatient.name}" parada por "${professionalInfo.name}".`);
+                    // Opcional: recolocar o paciente na fila
                 }
                 currentlyCallingPatient = null;
-                io.emit('call_stopped'); // Notifica a sala de espera e outros médicos
-                io.emit('queue_updated', patientQueue); // Garante que a fila na sala de espera e médicos esteja atualizada
-
+                io.emit('call_stopped');
+                io.emit('queue_updated', patientQueue); // Garante que a fila esteja atualizada em todos
              } else {
                   socket.emit('error_message', 'Você só pode encerrar chamadas que você iniciou.');
-                   console.log(`Tentativa falha de encerrar chamada (médico diferente).`);
+                   console.log(`Tentativa falha de encerrar chamada (profissional diferente).`);
              }
         } else {
              socket.emit('error_message', 'Nenhum paciente ativo para encerrar a chamada.');
         }
     });
 
+    // Evento para atualizar o vídeo
     socket.on('update_video', (url) => {
-         const doctorName = connectedDoctors[socket.id];
-         if (!doctorName) {
-            socket.emit('error_message', 'Você precisa estar logado como médico para atualizar o vídeo.');
+         const professionalInfo = connectedProfessionals[socket.id];
+         if (!professionalInfo) {
+            socket.emit('error_message', 'Você precisa estar logado para atualizar o vídeo.');
             return;
         }
-        // Basic validation for YouTube URL (can be more robust)
         const youtubeRegex = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
         const match = url ? url.match(youtubeRegex) : null;
 
         if (url && match) {
             const videoId = match[1];
+            // Nota: Usando googleusercontent.com/youtube.com é um padrão incomum,
+            // um embed URL padrão do YouTube seria mais robusto:
             videoUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}`;
-            io.emit('video_updated', videoUrl);
-            console.log(`Vídeo do YouTube atualizado por "${doctorName}": ${videoUrl}`);
+             io.emit('video_updated', videoUrl);
+            console.log(`Vídeo do YouTube atualizado por "${professionalInfo.name}": ${videoUrl}`);
         } else if (!url) {
              videoUrl = null;
              io.emit('video_updated', videoUrl);
-             console.log(`Vídeo removido por "${doctorName}".`);
+             console.log(`Vídeo removido por "${professionalInfo.name}".`);
         }
         else {
              socket.emit('error_message', 'Link do YouTube inválido.');
-             console.log(`Tentativa falha de atualizar vídeo (link inválido) por "${doctorName}".`);
+             console.log(`Tentativa falha de atualizar vídeo (link inválido) por "${professionalInfo.name}".`);
         }
     });
 
     // --- Lógica de Desconexão ---
     socket.on('disconnect', () => {
-        const doctorName = connectedDoctors[socket.id];
-        if (doctorName) {
-            delete connectedDoctors[socket.id];
-            console.log(`Médico "${doctorName}" desconectado (ID: ${socket.id}).`);
-            io.emit('doctor_list_updated', Object.values(connectedDoctors));
+        const professionalInfo = connectedProfessionals[socket.id];
+        if (professionalInfo) {
+            delete connectedProfessionals[socket.id];
+            console.log(`Profissional "${professionalInfo.name}" desconectado (ID: ${socket.id}).`);
+            io.emit('professional_list_updated', Object.values(connectedProfessionals));
 
-             // Se o médico que desconectou estava chamando alguém, parar a chamada
+             // Se o profissional que desconectou estava chamando alguém, parar a chamada
             if (currentlyCallingPatient && currentlyCallingPatient.calledBySocketId === socket.id) {
                 currentlyCallingPatient = null;
                 io.emit('call_stopped');
-                 console.log(`Chamada parada pois o médico "${doctorName}" desconectou inesperadamente.`);
+                 console.log(`Chamada parada pois o profissional "${professionalInfo.name}" desconectou inesperadamente.`);
             }
         } else {
-             console.log('Cliente desconectado (sem login de médico):', socket.id);
-              // Se o cliente desconectado era a sala de espera e havia um paciente sendo chamado por ele (menos provável), parar a chamada.
-              // Isso dependeria de como você identifica a sala de espera.
+             console.log('Cliente desconectado (sem login):', socket.id);
         }
     });
 });
 
-// Função para ordenar a fila (alta prioridade primeiro, depois por tempo de adição)
 function sortPatientQueue() {
     patientQueue.sort((a, b) => {
         if (a.priority === 'high' && b.priority !== 'high') return -1;
@@ -214,6 +215,12 @@ function sortPatientQueue() {
         return a.addedTime - b.addedTime;
     });
 }
+
+// Rota para redirecionar a raiz para o painel do médico (opcional)
+app.get('/', (req, res) => {
+  res.redirect('/medico.html');
+});
+
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
