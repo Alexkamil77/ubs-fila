@@ -12,7 +12,6 @@
         .blinking-text { animation: blinker 1.5s linear infinite; }
         @keyframes blinker { 50% { opacity: 0.4; } }
         .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background-color: #000; }
-        /* O iframe agora será criado dinamicamente pela API do YouTube dentro desta div */
         #youtube-player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
@@ -20,7 +19,6 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #a5b4fc; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #818cf8; }
 
-        /* Ajuste para aumentar a área da seção de chamada */
         #patientCalledSection {
             padding-top: 1.5rem;
             padding-bottom: 1.5rem;
@@ -80,11 +78,10 @@
         let callIntervalId = null;
         let lastCalledPatientInfo = null;
 
-        // Variáveis para o Player do YouTube
-        let player; // Objeto do player do YouTube
-        let normalVolume = 40; // Volume normal do vídeo (0-100)
-        let reducedVolume = 10; // Volume reduzido durante a chamada (0-100)
-        let currentPlaylistEmbedUrl = null; // Armazena a URL DE EMBED da playlist atual
+        let player;
+        let normalVolume = 40;
+        let reducedVolume = 10;
+        let currentPlaylistEmbedUrl = null;
 
         const patientCalledSection = document.getElementById('patientCalledSection');
         const professionalsOnlineDisplayEl = document.getElementById('professionalsOnlineDisplay').querySelector('span');
@@ -116,7 +113,6 @@
             } else {
                 clearCalledPatient();
             }
-             // Usa state.playlistEmbedUrl para atualizar o player
             updateVideoPlayer(state.playlistEmbedUrl);
              updateProfessionalDisplay(state.professionals);
         });
@@ -130,8 +126,7 @@
         socket.on('patient_called', (calledPatientInfo) => {
             console.log('Paciente sendo chamado:', calledPatientInfo);
             displayCalledPatient(calledPatientInfo, calledPatientInfo.calledBy);
-            // Reduz o volume do vídeo ao iniciar a chamada
-            if (player && typeof player.setVolume === 'function') { // Verifica se o player existe e o método setVolume está disponível
+            if (player && typeof player.setVolume === 'function') {
                 player.setVolume(reducedVolume);
                  console.log("Volume do vídeo reduzido.");
             } else {
@@ -142,8 +137,7 @@
         socket.on('call_stopped', () => {
             console.log('Chamada parada.');
             clearCalledPatient();
-            // Restaura o volume do vídeo ao parar a chamada
-            if (player && typeof player.setVolume === 'function') { // Verifica se o player existe e o método setVolume está disponível
+            if (player && typeof player.setVolume === 'function') {
                 player.setVolume(normalVolume);
                  console.log("Volume do vídeo restaurado.");
             } else {
@@ -151,7 +145,6 @@
             }
         });
 
-        // Recebe a URL de embed da playlist do servidor
         socket.on('video_updated', (playlistEmbedUrl) => {
             console.log('Playlist atualizada recebida:', playlistEmbedUrl);
             updateVideoPlayer(playlistEmbedUrl);
@@ -165,21 +158,16 @@
 
         // --- Funções da API do Player do YouTube ---
 
-        // Esta função é chamada automaticamente quando a API do YouTube estiver pronta (Nome PADRÃO da função)
         function onYouTubeIframeAPIReady() {
             console.log("API do YouTube IFrame Player Ready (Função Padrão).");
-             // Cria o player assim que a API estiver pronta, usando a URL de embed armazenada
              if (currentPlaylistEmbedUrl) {
                  createPlayer(currentPlaylistEmbedUrl);
              } else {
-                 // Garante que a mensagem "Nenhuma playlist selecionada" esteja visível se não houver playlist
-                 updateVideoPlayer(null); // Isso irá ocultar o player e mostrar a mensagem
+                 updateVideoPlayer(null);
              }
         }
 
-        // Cria ou atualiza o player do YouTube
         function createPlayer(playlistEmbedUrl) {
-             // Verifica se a URL de embed é válida e extrai o ID da playlist (redundante se o backend já validar, mas seguro)
              const playlistIdMatch = playlistEmbedUrl ? playlistEmbedUrl.match(/[?&]list=([a-zA-Z0-9_-]+)/) : null;
              const playlistId = playlistIdMatch ? playlistIdMatch[1] : null;
 
@@ -189,61 +177,54 @@
                  return;
              }
 
-            // Se já existe um player, destrua-o primeiro para evitar múltiplos players
             if (player && typeof player.destroy === 'function') {
                 player.destroy();
-                console.log("Player do YouTube existente destruído.");
+                player = null; // Limpa a referência
+                console.log("Player do YouTube existente destruído antes de criar um novo.");
             }
 
-            // Oculta a mensagem padrão
             if (noPlaylistMessageEl) noPlaylistMessageEl.style.display = 'none';
 
-            // Cria um novo player
             player = new YT.Player('youtube-player', {
-                // A altura e largura serão controladas pelo CSS do contêiner #youtube-player
-                // height: '100%',
-                // width: '100%',
                 playerVars: {
                     'listType': 'playlist',
-                    'list': playlistId, // Define o ID da playlist
-                    'autoplay': 1, // Autoplay (pode depender das políticas do navegador)
-                    'mute': 1, // Mudo inicialmente para aumentar a chance de autoplay funcionar
-                    'loop': 1, // Repetir a playlist
-                    'controls': 1, // Mostrar controles
-                    'showinfo': 0, // Não mostrar título do vídeo
-                    'rel': 0, // Não mostrar vídeos relacionados ao final
-                    'enablejsapi': 1, // Habilitar a API JavaScript (essencial)
-                    'origin': window.location.origin // Importante para a API em alguns casos
+                    'list': playlistId,
+                    'autoplay': 1,
+                    'mute': 1,
+                    'loop': 1,
+                    'controls': 1,
+                    'showinfo': 0,
+                    'rel': 0,
+                    'enablejsapi': 1,
+                    'origin': window.location.origin
                 },
                 events: {
                     'onReady': onPlayerReady,
-                    'onError': onPlayerError
-                    // Outros eventos: onStateChange, onPlaybackQualityChange, onPlaybackRateChange, onApiChange
-                     // onStateChange é útil para detectar quando o player começa/para de tocar, etc.
+                    'onError': onPlayerError,
+                     // Adiciona um listener para verificar o estado da reprodução (opcional para debug)
+                    'onStateChange': onPlayerStateChange
                 }
             });
             console.log("Player do YouTube criado para playlist com ID:", playlistId);
         }
 
-        // Chamada quando o player estiver pronto e a API puder ser usada
         function onPlayerReady(event) {
             console.log("Player do YouTube pronto.");
-             // Defina o volume inicial após o player estar pronto
             if (player && typeof player.setVolume === 'function') {
                  player.setVolume(normalVolume);
                  console.log("Volume inicial do vídeo definido para:", normalVolume);
-                 // Opcional: Remover o mudo após a interação do usuário (não implementado aqui)
-                 // player.unMute();
+                 // Tenta remover o mudo automaticamente após o player estar pronto.
+                 // Note que isso pode não funcionar em todos os navegadores sem interação do usuário.
+                 player.unMute();
+                 console.log("Tentando remover o mudo do player.");
             }
-             // O player pode estar pausado inicialmente dependendo das políticas de autoplay do navegador.
-             // event.target.playVideo(); // Tentar iniciar a reprodução
+             // Tenta iniciar a reprodução. Pode ser bloqueado pelo navegador sem interação do usuário.
+            // event.target.playVideo();
         }
 
-        // Chamada se ocorrer um erro no player
         function onPlayerError(event) {
             console.error("Erro no Player do YouTube:", event.data);
-             // Mostra a mensagem de "Nenhuma playlist selecionada" em caso de erro
-             updateVideoPlayer(null); // Isso destrói o player e mostra a mensagem
+             updateVideoPlayer(null);
 
              let errorMessage = "Ocorreu um erro ao carregar o vídeo/playlist.";
               if (event.data === 2) errorMessage = "ID do vídeo/playlist inválido.";
@@ -252,34 +233,47 @@
               else if (event.data === 5) errorMessage = "Erro de reprodução (Flash player não habilitado ou outro).";
 
              console.error("Mensagem de erro do player:", errorMessage);
-             // Opcional: Exibir a mensagem de erro na tela para o usuário
         }
 
+         // Opcional: Função para logar mudanças de estado do player (útil para debug)
+         function onPlayerStateChange(event) {
+             // YT.PlayerState.ENDED, YT.PlayerState.PLAYING, YT.PlayerState.PAUSED, YT.PlayerState.BUFFERING, YT.PlayerState.CUED
+             const stateNames = {
+                 '-1': 'Não Iniciado',
+                 '0': 'Encerrado',
+                 '1': 'Reproduzindo',
+                 '2': 'Pausado',
+                 '3': 'Armazenando em buffer',
+                 '5': 'Vídeo Sugerido'
+             };
+              console.log('Estado do Player do YouTube mudou:', stateNames[event.data] || event.data);
 
-        // Esta função agora gerencia a criação/remoção do player e a exibição da mensagem
+             // **Importante para áudio/vídeo:** Se a reprodução começar (estado 1), podemos tentar remover o mudo aqui novamente
+              if (event.data === YT.PlayerState.PLAYING) {
+                 if (player && typeof player.unMute === 'function') {
+                     // player.unMute(); // Descomente se quiser tentar remover o mudo ao iniciar
+                      // console.log("Tentando remover o mudo no estado PLAYING.");
+                 }
+              }
+         }
+
+
         function updateVideoPlayer(playlistEmbedUrl) {
-             currentPlaylistEmbedUrl = playlistEmbedUrl; // Armazena a URL de embed recebida
+             currentPlaylistEmbedUrl = playlistEmbedUrl;
 
             if (playlistEmbedUrl) {
-                 // Se a API do YouTube já estiver pronta, cria o player
                  if (window.YT && window.YT.Player) {
                     createPlayer(playlistEmbedUrl);
                  } else {
-                    // Se a API ainda não estiver pronta, ela será carregada (pela tag script)
-                    // e chamará onYouTubeIframeAPIReady, que verificará currentPlaylistEmbedUrl
-                    // e criará o player.
                     console.log("API do YouTube ainda não pronta. Player será criado quando onYouTubeIframeAPIReady for chamada.");
                  }
-                 // Oculta a mensagem padrão assim que uma URL é recebida
                 if (noPlaylistMessageEl) noPlaylistMessageEl.style.display = 'none';
             } else {
-                 // Se a URL for nula ou vazia, destrói o player existente (se houver)
                 if (player && typeof player.destroy === 'function') {
                     player.destroy();
-                    player = null; // Limpa a referência
+                    player = null;
                     console.log("Player do YouTube destruído (playlist removida).");
                 }
-                 // Mostra a mensagem padrão
                 if (noPlaylistMessageEl) noPlaylistMessageEl.style.display = 'flex';
             }
         }
@@ -287,36 +281,59 @@
 
         // --- Funções de UI e Exibição (mantidas) ---
 
+        // Função para carregar vozes
         function loadVoices() {
-             // Busca por vozes em português, priorizando nomes que indicam "feminina" ou "Brazil"
-            voices = synth.getVoices().filter(voice =>
+             // Garante que a síntese de fala esteja disponível
+             if (!synth) {
+                 console.warn("Speech Synthesis API não suportada neste navegador.");
+                 voices = []; // Garante que a lista de vozes está vazia
+                 return;
+             }
+
+             // Tenta obter as vozes disponíveis
+            const availableVoices = synth.getVoices();
+            console.log("Vozes disponíveis no sistema:", availableVoices.map(v => `${v.name} (${v.lang})`).join(', '));
+
+
+             // Filtra por vozes em português, priorizando nomes que indicam "feminina" ou "Brazil"
+            voices = availableVoices.filter(voice =>
                 voice.lang.startsWith('pt') &&
                 (voice.name.toLowerCase().includes('female') ||
                  voice.name.toLowerCase().includes('feminina') ||
                  voice.name.toLowerCase().includes('brazil'))
             );
 
+             // Se não encontrar vozes femininas em português com os termos específicos, pega qualquer voz em português
              if (voices.length === 0) {
-                 voices = synth.getVoices().filter(voice => voice.lang.startsWith('pt'));
+                 voices = availableVoices.filter(voice => voice.lang.startsWith('pt'));
              }
 
-             if (voices.length === 0 && synth.getVoices().length > 0) {
-                 voices = [synth.getVoices()[0]];
+             // Se ainda não encontrar vozes em português, pega a primeira voz disponível
+             if (voices.length === 0 && availableVoices.length > 0) {
+                 voices = [availableVoices[0]];
              }
 
-            if (voices.length === 0 && speechSynthesis.onvoiceschanged !== undefined) {
-                speechSynthesis.onvoiceschanged = () => {
-                    loadVoices();
-                    console.log("Vozes carregadas após evento onvoiceschanged.");
-                };
-            } else if (voices.length > 0) {
-                 console.log("Vozes carregadas. Voz(es) selecionada(s):", voices.map(v => `${v.name} (${v.lang})`).join(', '));
+            if (voices.length > 0) {
+                 console.log("Voz(es) selecionada(s) para chamadas:", voices.map(v => `${v.name} (${v.lang})`).join(', '));
             } else {
-                 console.warn("Nenhuma voz de síntese de fala encontrada.");
+                 console.warn("Nenhuma voz de síntese de fala em português (ou qualquer outra) encontrada.");
             }
+
+             // Se as vozes ainda não foram carregadas (evento onvoiceschanged ainda pode disparar em alguns navegadores)
+             // Adiciona o listener APENAS se ele ainda não foi definido (para evitar duplicidade)
+             if (typeof speechSynthesis.onvoiceschanged === 'function' && !speechSynthesis.__voiceschanged_listener_set__) {
+                 speechSynthesis.onvoiceschanged = () => {
+                     console.log("Evento 'onvoiceschanged' disparado.");
+                     loadVoices(); // Recarrega as vozes quando mudarem
+                 };
+                 speechSynthesis.__voiceschanged_listener_set__ = true; // Marca que o listener foi definido
+             } else if (typeof speechSynthesis.onvoiceschanged === 'undefined') {
+                 console.warn("Evento 'onvoiceschanged' não suportado neste navegador.");
+             }
         }
-        // Garante que a função loadVoices seja chamada APÓS o DOM estar completamente carregado
-        document.addEventListener('DOMContentLoaded', loadVoices);
+
+        // Chama a função loadVoices para carregar as vozes
+        loadVoices();
 
 
         function updateDateTime() {
@@ -345,6 +362,7 @@
 
             const announcement = `${patientInfo.name}, ${patientInfo.priority === 'high' ? 'atendimento prioritário,' : ''} por favor, dirija-se ${pronoun} ${roomText} da ${title} ${callingProfessionalInfo ? callingProfessionalInfo.name : 'responsável'}.`;
 
+            // *** Chamada da função speak ***
             speak(announcement);
 
             if (callIntervalId) clearInterval(callIntervalId);
