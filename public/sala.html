@@ -191,8 +191,8 @@
             }
 
             // Ajustes de voz para tentar soar mais natural (podem variar por voz/navegador)
-            utterance.rate = 1.0; // Velocidade (1.0 é normal)
-            utterance.pitch = 1.0; // Tom (1.0 é normal) - experimente 1.05 ou 0.95 se quiser testar tons diferentes
+            utterance.rate = 1.0; // Velocidade (0.95 é normal)
+            utterance.pitch = 1.0; // Tom (1.05 é normal) - experimente 1.05 ou 0.95 se quiser testar tons diferentes
 
             utterance.onstart = () => {
                 patientCalledSection.classList.add('blinking-text');
