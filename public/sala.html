@@ -28,7 +28,7 @@
             <div class="mt-4 flex flex-col md:flex-row justify-between items-center text-center md:text-left border-t pt-4">
                 <div>
                     <p class="text-xl font-semibold text-blue-700">UBS SESC</p>
-                    <p class="text-md text-blue-600">Equipe: Cristina C. / Dr. Alexander Jimenez Ocana</p> <p id="doctorsOnlineDisplay" class="text-md text-blue-600">Médicos Online: <span class="font-medium">Aguardando...</span></p> </div>
+                    <p class="text-md text-blue-600">Equipe: Cristina C. / Dr. Alexander Jimenez Ocana</p> <p id="professionalsOnlineDisplay" class="text-md text-blue-600">Profissionais Online: <span class="font-medium">Aguardando...</span></p> </div>
                 <div class="mt-4 md:mt-0 text-right">
                     <p id="currentDate" class="text-lg text-gray-700"></p>
                     <p id="currentTime" class="text-3xl font-bold text-blue-800"></p>
@@ -40,7 +40,7 @@
             <div class="md:col-span-1 bg-indigo-50 p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold text-indigo-700 mb-4 text-center">Próximos Pacientes</h2>
                 <div id="waitingListDisplay" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar bg-white p-4 rounded-lg shadow-inner">
-                    <p class="text-gray-500 text-center py-4">Nenhum paciente na fila.</p>
+                    <p class="text-gray-500 text-center py-4">Nenhum paciente aguardando na fila.</p>
                 </div>
             </div>
 
@@ -54,21 +54,21 @@
     </div>
 
     <footer class="text-center py-4 bg-blue-700 text-white">
-        <p>&copy; <span id="currentYear"></span> UBS SESC Atendimento. Tenha um ótimo dia!</p>
+        <p>© <span id="currentYear"></span> UBS SESC Atendimento. Tenha um ótimo dia!</p>
     </footer>
 
-    <script src="/socket.io/socket.io.js"></script> <script>
-        // Conecta ao servidor Socket.IO
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
         const socket = io();
 
         const synth = window.speechSynthesis;
         let voices = [];
-        let callIntervalId = null; // Para repetir a chamada de voz
-        let lastCalledPatientInfo = null; // Para repetir a chamada correta
+        let callIntervalId = null;
+        let lastCalledPatientInfo = null; // Objeto completo do paciente sendo chamado, incluindo 'calledBy'
 
         // Elementos da UI
         const patientCalledSection = document.getElementById('patientCalledSection');
-        const doctorsOnlineDisplayEl = document.getElementById('doctorsOnlineDisplay').querySelector('span'); // Renomeado
+        const professionalsOnlineDisplayEl = document.getElementById('professionalsOnlineDisplay').querySelector('span'); // ID atualizado
         const waitingListDisplay = document.getElementById('waitingListDisplay');
         const videoPlayerContainer = document.getElementById('videoPlayerContainer');
         const currentDateEl = document.getElementById('currentDate');
@@ -78,62 +78,57 @@
          // --- Lógica de Conexão e Eventos do Socket ---
         socket.on('connect', () => {
             console.log('Sala de espera conectada ao servidor Socket.IO');
-             // Ao conectar, o servidor enviará o estado atual
         });
 
         socket.on('disconnect', () => {
             console.log('Sala de espera desconectada do servidor Socket.IO');
-             // Limpar exibição ou mostrar mensagem de desconexão
              clearCalledPatient();
              updateWaitingList([]);
              updateVideoPlayer(null);
-             updateDoctorDisplay([]); // Limpa a lista de médicos online
+             updateProfessionalDisplay([]); // Limpa a lista de profissionais online
         });
 
-        // Recebe o estado inicial do servidor ao conectar
         socket.on('current_state', (state) => {
             console.log('Estado inicial recebido:', state);
             updateWaitingList(state.patients);
             if (state.calling) {
-                 // O objeto 'calling' do servidor já inclui 'calledByDoctor'
-                displayCalledPatient(state.calling, state.calling.calledByDoctor);
+                 // O objeto 'calling' do servidor inclui 'calledBy: {name, role}'
+                displayCalledPatient(state.calling, state.calling.calledBy);
             } else {
                 clearCalledPatient();
             }
             updateVideoPlayer(state.video);
-            updateDoctorDisplay(state.doctors); // Atualiza a lista de médicos online
+             updateProfessionalDisplay(state.professionals); // Recebe a lista de objetos {name, role}
         });
 
 
-        // Recebe atualizações da fila de pacientes do servidor
         socket.on('queue_updated', (updatedQueue) => {
             console.log('Fila atualizada recebida:', updatedQueue);
             updateWaitingList(updatedQueue);
         });
 
-        // Recebe informações sobre o paciente que ESTÁ sendo chamado
-        socket.on('patient_called', (calledPatientInfo) => {
+        socket.on('patient_called', (calledPatientInfo) => { // Recebe o objeto completo
             console.log('Paciente sendo chamado:', calledPatientInfo);
-             // O objeto 'calledPatientInfo' já inclui 'calledByDoctor' do servidor
-            displayCalledPatient(calledPatientInfo, calledPatientInfo.calledByDoctor);
+             // calledPatientInfo inclui agora {name, role} de quem chamou
+            displayCalledPatient(calledPatientInfo, calledPatientInfo.calledBy);
         });
 
-        // Recebe o sinal de que a chamada foi parada
         socket.on('call_stopped', () => {
             console.log('Chamada parada.');
             clearCalledPatient();
         });
 
-        // Recebe atualizações do vídeo para a sala de espera
         socket.on('video_updated', (videoUrl) => {
             console.log('Vídeo atualizado recebido:', videoUrl);
             updateVideoPlayer(videoUrl);
         });
 
-         // Recebe a lista atualizada de nomes de médicos online
-         socket.on('doctor_list_updated', (doctorNames) => {
-             console.log('Lista de médicos online atualizada:', doctorNames);
-             updateDoctorDisplay(doctorNames);
+         // Recebe a lista atualizada de objetos {name, role} de profissionais online
+         socket.on('professional_list_updated', (professionalList) => {
+             console.log('Lista de profissionais online atualizada:', professionalList);
+             // Extrai apenas os nomes e roles para exibição
+             const professionalNamesAndRoles = professionalList.map(p => `${p.name} (${p.role})`);
+             updateProfessionalDisplay(professionalNamesAndRoles);
          });
 
         // --- Funções de UI e Exibição ---
@@ -149,9 +144,9 @@
                  console.log("Vozes em português carregadas imediatamente.");
             }
         }
-        loadVoices(); // Tenta carregar as vozes imediatamente
+        loadVoices();
 
-        function speak(text, patientPriority) {
+        function speak(text) { // Não precisa mais do patientPriority aqui
             if (!synth) {
                  console.warn("Speech Synthesis API não suportada neste navegador.");
                  return;
@@ -160,12 +155,11 @@
                 synth.cancel();
             }
             const utterance = new SpeechSynthesisUtterance(text);
-            // Tenta encontrar uma voz feminina em português
             let ptFemaleVoice = voices.find(voice => voice.lang.startsWith('pt') && (voice.name.toLowerCase().includes('female') || voice.name.toLowerCase().includes('feminina') || voice.name.toLowerCase().includes('brazil')));
-            if (!ptFemaleVoice && voices.length > 0) { // Fallback para qualquer voz em PT
+            if (!ptFemaleVoice && voices.length > 0) {
                  ptFemaleVoice = voices.find(voice => voice.lang.startsWith('pt'));
             }
-             if (!ptFemaleVoice && synth.getVoices().length > 0) { // Fallback para a primeira voz disponível se não houver PT
+             if (!ptFemaleVoice && synth.getVoices().length > 0) {
                  ptFemaleVoice = synth.getVoices()[0];
             }
 
@@ -178,13 +172,12 @@
                  console.warn("Nenhuma voz em português encontrada, usando padrão pt-BR.");
             }
             utterance.rate = 0.9;
-            utterance.pitch = 1.1; // Voz um pouco mais suave/aguda
+            utterance.pitch = 1.1;
 
             utterance.onstart = () => {
                 patientCalledSection.classList.add('blinking-text');
             };
             utterance.onend = () => {
-                 // Mantém o blink um pouco mais visível antes de remover
                  setTimeout(() => patientCalledSection.classList.remove('blinking-text'), 1000);
             };
             utterance.onerror = (event) => {
@@ -202,85 +195,96 @@
         setInterval(updateDateTime, 1000);
         updateDateTime();
 
-        function displayCalledPatient(patientInfo, doctorName) { // patientInfo agora é o objeto do servidor
+        // Recebe o objeto completo do paciente chamado e o objeto {name, role} de quem chamou
+        function displayCalledPatient(patientInfo, callingProfessionalInfo) {
             lastCalledPatientInfo = patientInfo; // Salva para repetição da chamada
+
+             // Determina o pronome e título para a exibição e voz
+             let title = callingProfessionalInfo && callingProfessionalInfo.role === 'Enfermeira' ? 'Enfermeira(o)' : 'Doutor(a)';
+             let pronoun = callingProfessionalInfo && callingProfessionalInfo.role === 'Enfermeira' ? 'à' : 'ao'; // para 'dirija-se à/ao consultório'
+             let roomText = callingProfessionalInfo && callingProfessionalInfo.role === 'Enfermeira' ? 'sala' : 'consultório'; // sala da enfermeira ou consultório do doutor
+
+
             patientCalledSection.innerHTML = `
                 <p class="text-4xl md:text-5xl font-bold ${patientInfo.priority === 'high' ? 'patient-called-high-priority' : 'text-green-600'}">
                     ${patientInfo.name}
                 </p>
                 ${patientInfo.priority === 'high' ? '<p class="text-2xl text-red-500 font-semibold mt-1">ATENDIMENTO PRIORITÁRIO</p>' : ''}
-                <p class="text-xl md:text-2xl text-gray-700 mt-2">Por favor, dirija-se ao consultório:</p>
-                <p class="text-2xl md:text-3xl font-semibold text-blue-700">${doctorName || 'Médico Responsável'}</p> `;
-             // Ajusta a frase da chamada de voz para incluir o nome do médico
-            const announcement = `${patientInfo.name}, ${patientInfo.priority === 'high' ? 'atendimento prioritário,' : ''} por favor, dirija-se ao consultório do Doutor ${doctorName || 'responsável'}.`;
-            speak(announcement, patientInfo.priority);
+                <p class="text-xl md:text-2xl text-gray-700 mt-2">Por favor, dirija-se ${pronoun} ${roomText}:</p>
+                <p class="text-2xl md:text-3xl font-semibold text-blue-700">${title} ${callingProfessionalInfo ? callingProfessionalInfo.name : 'Responsável'}</p>
+            `;
+
+             // Ajusta a frase da chamada de voz para incluir o tipo e nome do profissional
+            const announcement = `${patientInfo.name}, ${patientInfo.priority === 'high' ? 'atendimento prioritário,' : ''} por favor, dirija-se ${pronoun} ${roomText} da ${title} ${callingProfessionalInfo ? callingProfessionalInfo.name : 'responsável'}.`;
+
+            speak(announcement); // Chama a função de fala
 
             // Limpa qualquer intervalo de chamada anterior e inicia um novo
             if (callIntervalId) clearInterval(callIntervalId);
             callIntervalId = setInterval(() => {
                 if (lastCalledPatientInfo) { // Verifica se ainda há um paciente sendo chamado
-                     speak(announcement, lastCalledPatientInfo.priority); // Repete a chamada com a info salva
+                     // Recria a frase de anúncio caso as informações tenham mudado por algum motivo (improvável, mas seguro)
+                     const currentTitle = lastCalledPatientInfo.calledBy && lastCalledPatientInfo.calledBy.role === 'Enfermeira' ? 'Enfermeira(o)' : 'Doutor(a)';
+                     const currentPronoun = lastCalledPatientInfo.calledBy && lastCalledPatientInfo.calledBy.role === 'Enfermeira' ? 'à' : 'ao';
+                     const currentRoomText = lastCalledPatientInfo.calledBy && lastCalledPatientInfo.calledBy.role === 'Enfermeira' ? 'sala' : 'consultório';
+
+                     const repeatAnnouncement = `${lastCalledPatientInfo.name}, ${lastCalledPatientInfo.priority === 'high' ? 'atendimento prioritário,' : ''} por favor, dirija-se ${currentPronoun} ${currentRoomText} da ${currentTitle} ${lastCalledPatientInfo.calledBy ? lastCalledPatientInfo.calledBy.name : 'responsável'}.`;
+                     speak(repeatAnnouncement); // Repete a chamada com a frase correta
                 } else {
-                    clearInterval(callIntervalId); // Para o intervalo se não houver mais paciente
+                    clearInterval(callIntervalId);
                     callIntervalId = null;
                 }
             }, 30000); // Chama a cada 30 segundos (ajustável)
         }
 
         function clearCalledPatient() {
-            lastCalledPatientInfo = null; // Limpa a informação do último chamado
-            if (callIntervalId) clearInterval(callIntervalId); // Para o intervalo de repetição
+            lastCalledPatientInfo = null;
+            if (callIntervalId) clearInterval(callIntervalId);
             callIntervalId = null;
             patientCalledSection.innerHTML = '<p class="text-2xl md:text-3xl text-gray-500">Aguardando chamada...</p>';
             patientCalledSection.classList.remove('blinking-text');
-             if (synth.speaking) { // Para a fala se estiver ocorrendo
+             if (synth.speaking) {
                 synth.cancel();
             }
         }
 
-        function updateWaitingList(patients) { // Recebe a lista atualizada do servidor
+        function updateWaitingList(patients) {
             waitingListDisplay.innerHTML = '';
             // Filtra a lista para não mostrar o paciente que está sendo chamado no momento (se houver)
             const patientsToShow = patients.filter(p => !lastCalledPatientInfo || p.id !== lastCalledPatientInfo.id);
-
 
             if (patientsToShow.length === 0) {
                 waitingListDisplay.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum paciente aguardando na fila.</p>';
                 return;
             }
-            // Mostra até 10 próximos pacientes na lista de espera
             patientsToShow.slice(0, 10).forEach((patient, index) => {
                 const div = document.createElement('div');
-                // Inclui o nome do médico que adicionou o paciente
+                 // Inclui o nome e papel do profissional que adicionou o paciente
                 div.className = `p-3 rounded-md shadow-sm text-center ${patient.priority === 'high' ? 'bg-red-100 border-l-4 border-red-500' : 'bg-green-100 border-l-4 border-green-500'}`;
                 div.innerHTML = `
                     <p class="font-semibold text-gray-800 text-lg">${index + 1}. ${patient.name}</p>
-                    <p class="text-sm text-gray-600 italic">Adicionado por: ${patient.addedByDoctor || 'N/A'}</p> ${patient.priority === 'high' ? '<p class="text-sm text-red-700 font-medium">PRIORIDADE</p>' : '<p class="text-sm text-green-700">Normal</p>'}
+                    <p class="text-sm text-gray-600 italic">Adicionado por: ${patient.addedBy ? patient.addedBy.name + ' (' + patient.addedBy.role + ')' : 'N/A'}</p> ${patient.priority === 'high' ? '<p class="text-sm text-red-700 font-medium">PRIORIDADE</p>' : '<p class="text-sm text-green-700">Normal</p>'}
                 `;
                 waitingListDisplay.appendChild(div);
             });
         }
 
-        function updateVideoPlayer(videoUrl) { // Recebe o URL do vídeo do servidor
+        function updateVideoPlayer(videoUrl) {
             if (videoUrl) {
-                // Usa o URL diretamente (assumindo que o backend já formatou para embed)
                 videoPlayerContainer.innerHTML = `<iframe src="${videoUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
             } else {
                 videoPlayerContainer.innerHTML = '<p class="flex items-center justify-center h-full text-white text-lg">Nenhum vídeo selecionado.</p>';
             }
         }
 
-        function updateDoctorDisplay(doctorNames) { // Recebe a lista de nomes de médicos online
-            if (doctorNames && doctorNames.length > 0) {
-                 doctorsOnlineDisplayEl.textContent = doctorNames.join(', ');
+        // Recebe a lista de nomes E roles de profissionais online
+        function updateProfessionalDisplay(professionalNamesAndRoles) {
+            if (professionalNamesAndRoles && professionalNamesAndRoles.length > 0) {
+                 professionalsOnlineDisplayEl.textContent = professionalNamesAndRoles.join(', ');
             } else {
-                 doctorsOnlineDisplayEl.textContent = 'Nenhum médico online.';
+                 professionalsOnlineDisplayEl.textContent = 'Nenhum profissional online.';
             }
         }
-
-        // O evento DOMContentLoaded e a lógica de localStorage/BroadcastChannel foram removidos
-        // A inicialização do estado acontece automaticamente quando o Socket.IO conecta
-        // e o servidor envia o evento 'current_state'.
 
     </script>
 </body>
