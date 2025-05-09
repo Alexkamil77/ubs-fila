@@ -218,7 +218,7 @@
         function displayCalledPatient(patientInfo, callingProfessionalInfo) {
             lastCalledPatientInfo = patientInfo;
 
-             let title = callingProfessionalInfo && callingProfessionalInfo.role === 'Enfermeira' ? 'Enfermeira(o)' : 'Doutor(a)';
+             let title = callingProfessionalInfo && callingProfessionalInfo.role === 'Enfermeira' ? 'Enfermeira (o)' : 'Doutor';
              let pronoun = callingProfessionalInfo && callingProfessionalInfo.role === 'Enfermeira' ? 'à' : 'ao';
              let roomText = callingProfessionalInfo && callingProfessionalInfo.role === 'Enfermeira' ? 'sala' : 'consultório';
 
@@ -238,7 +238,7 @@
             if (callIntervalId) clearInterval(callIntervalId);
             callIntervalId = setInterval(() => {
                 if (lastCalledPatientInfo) {
-                     const currentTitle = lastCalledPatientInfo.calledBy && lastCalledPatientInfo.calledBy.role === 'Enfermeira' ? 'Enfermeira(o)' : 'Doutor(a)';
+                     const currentTitle = lastCalledPatientInfo.calledBy && lastCalledPatientInfo.calledBy.role === 'Enfermeira' ? 'Enfermeira(o)' : 'Doutor';
                      const currentPronoun = lastCalledPatientInfo.calledBy && lastCalledPatientInfo.calledBy.role === 'Enfermeira' ? 'à' : 'ao';
                      const currentRoomText = lastCalledPatientInfo.calledBy && lastCalledPatientInfo.calledBy.role === 'Enfermeira' ? 'sala' : 'consultório';
 
