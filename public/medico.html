@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Profissional - UBS SESC</title> <script src="https://cdn.tailwindcss.com"></script>
+    <title>Painel do Profissional - UBS SESC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Poppins', sans-serif; background-color: #e0f2fe; }
@@ -22,10 +23,15 @@
         <div id="loginSection" class="">
             <div class="bg-white p-8 sm:p-12 rounded-xl shadow-2xl">
                 <img src="https://placehold.co/120x120/003366/FFFFFF?text=UBS+SESC" alt="Logo UBS" class="mx-auto mb-6 rounded-full">
-                <h2 class="text-3xl font-bold text-blue-700 mb-8 text-center">Acesso ao Painel</h2> <input type="text" id="professionalNameInput" placeholder="Digite seu nome" class="w-full px-4 py-3 border border-blue-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg shadow-sm"> <select id="professionalRoleSelect" class="w-full px-4 py-3 border border-blue-300 rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg shadow-sm bg-white"> <option value="Doutor">Doutor(a)</option>
+                <h2 class="text-3xl font-bold text-blue-700 mb-8 text-center">Acesso ao Painel</h2>
+                <input type="text" id="professionalNameInput" placeholder="Digite seu nome" class="w-full px-4 py-3 border border-blue-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg shadow-sm">
+                 <select id="professionalRoleSelect" class="w-full px-4 py-3 border border-blue-300 rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg shadow-sm bg-white">
+                     <option value="Doutor">Doutor(a)</option>
                      <option value="Enfermeira">Enfermeira(o)</option>
-                     <option value="Outro">Outro</option> </select>
-                <button onclick="loginProfessional()" class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-300 text-lg font-semibold shadow-md hover:shadow-lg"> Entrar
+                     <option value="Outro">Outro</option>
+                 </select>
+                <button onclick="loginProfessional()" class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-300 text-lg font-semibold shadow-md hover:shadow-lg">
+                    Entrar
                 </button>
             </div>
         </div>
@@ -33,7 +39,9 @@
         <div id="mainContent" class="hidden">
             <header class="mb-8 text-center">
                 <img src="https://placehold.co/100x100/003366/FFFFFF?text=UBS" alt="Logo UBS" class="mx-auto mb-4 rounded-full">
-                <h1 class="text-3xl md:text-4xl font-bold text-blue-800">Painel de Controle</h1> <p class="text-xl text-blue-600">Bem-vindo(a), <span id="loggedInProfessionalName" class="font-semibold"></span>!</p> </header>
+                <h1 class="text-3xl md:text-4xl font-bold text-blue-800">Painel de Controle</h1>
+                <p class="text-xl text-blue-600">Bem-vindo(a), <span id="loggedInProfessionalName" class="font-semibold"></span>!</p>
+            </header>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 space-y-6">
@@ -55,7 +63,8 @@
                         <div class="hidden md:flex justify-between mb-3 sticky top-0 bg-gray-100 p-2 rounded-md z-10">
                             <span class="font-semibold text-blue-600 w-12">Ordem</span>
                             <span class="font-semibold text-blue-600 flex-1">Nome</span>
-                             <span class="font-semibold text-blue-600 w-40 text-center">Adicionado por (Profissional)</span> <span class="font-semibold text-blue-600 w-28 text-center">Prioridade</span>
+                             <span class="font-semibold text-blue-600 w-40 text-center">Adicionado por (Profissional)</span>
+                            <span class="font-semibold text-blue-600 w-28 text-center">Prioridade</span>
                             <span class="font-semibold text-blue-600 w-24 text-center">Ações</span>
                         </div>
                         <div id="patientQueueDisplay" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
@@ -88,20 +97,17 @@
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-purple-500">
-                        <h3 class="text-xl font-semibold text-purple-700 mb-4">Vídeo para Sala de Espera</h3>
-                        <input type="text" id="youtubeLink" placeholder="Link completo do vídeo do YouTube" class="w-full px-3 py-2 border border-gray-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                         <button onclick="updateVideo()" class="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors duration-300 font-medium mb-2">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-4">Playlist do YouTube para Sala de Espera</h3> <input type="text" id="youtubeLink" placeholder="Link completo da playlist do YouTube" class="w-full px-3 py-2 border border-gray-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-purple-500"> <button onclick="updateVideo()" class="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors duration-300 font-medium mb-2">
                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 2l7.997 3.884A2 2 0 0019 7.616V16a2 2 0 01-2 2H3a2 2 0 01-2-2V7.616a2 2 0 001.003-1.732zM10 6a1 1 0 011 1v3.414l2.293-2.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 011.414-1.414L9 10.414V7a1 1 0 011-1z" /></svg>
-                            Atualizar Vídeo
-                        </button>
-                         <button onclick="removeVideo()" class="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors duration-300 font-medium">
+                            Atualizar Playlist
+                        </button> <button onclick="removeVideo()" class="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors duration-300 font-medium">
                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                            Remover Vídeo
-                        </button>
-                    </div>
+                            Remover Playlist
+                        </button> </div>
                 </div>
             </div>
-             <button onclick="logoutProfessional()" class="mt-8 bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition-colors duration-300 font-medium"> Sair (Logout)
+             <button onclick="logoutProfessional()" class="mt-8 bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition-colors duration-300 font-medium">
+                Sair (Logout)
             </button>
         </div>
     </div>
@@ -110,51 +116,51 @@
     <script>
         const socket = io();
 
-        // Alterado para armazenar objeto { name: 'Nome', role: 'Role' }
         let loggedInProfessional = null;
         let patientQueue = [];
         let currentlyCallingPatient = null;
+        // Removida a variável local youtubeLinkInput, o valor é enviado diretamente
+        let youtubeLinkInput; // Declaração mantida para atribuir o elemento DOM
 
-        // IDs de elementos atualizados
         let loginSection, mainContent, loggedInProfessionalNameEl, professionalNameInputEl, professionalRoleSelectEl,
             patientNameInput, highPriorityCheckbox, patientQueueDisplay, patientToCallSelect,
-            youtubeLinkInput, callPatientBtn, callInProgressControls, callingPatientNameEl;
+             callPatientBtn, callInProgressControls, callingPatientNameEl; // Removida youtubeLinkInput da atribuição aqui
+
 
         // --- Lógica de Conexão e Eventos do Socket ---
         socket.on('connect', () => {
             console.log('Conectado ao servidor Socket.IO:', socket.id);
-            // Tenta relogar se as informações do profissional já estiverem armazenadas
             const storedProfessional = localStorage.getItem('ubsProfessionalInfo');
             if (storedProfessional) {
-                loggedInProfessional = JSON.parse(storedProfessional); // Restaura o objeto
-                 // Emitir login para o servidor validar/registrar
-                 socket.emit('professional_login', loggedInProfessional); // Envia o objeto completo
-                 // Atualiza a UI para o estado logado (será sobrescrito pelo 'current_state' ou 'queue_updated')
-                 initializeProfessionalPanel(); // Chama para mostrar a UI logada rapidamente
+                loggedInProfessional = JSON.parse(storedProfessional);
+                 socket.emit('professional_login', loggedInProfessional);
+                 initializeProfessionalPanel();
             } else {
-                 initializeProfessionalPanel(); // Garante que a tela de login esteja visível
+                 initializeProfessionalPanel();
             }
         });
 
          socket.on('disconnect', () => {
             console.log('Desconectado do servidor Socket.IO');
-             loggedInProfessional = null; // Limpa localmente na desconexão
-             localStorage.removeItem('ubsProfessionalInfo'); // Remove do local storage
-             initializeProfessionalPanel(); // Volta para a tela de login
+             loggedInProfessional = null;
+             currentlyCallingPatient = null;
+             localStorage.removeItem('ubsProfessionalInfo');
+             initializeProfessionalPanel();
+             updateCallControls();
         });
 
         socket.on('current_state', (state) => {
             console.log('Estado inicial recebido:', state);
             patientQueue = state.patients;
             currentlyCallingPatient = state.calling;
+            // Não precisamos da URL da playlist no painel do médico, apenas o input
+            // A informação do vídeo é gerenciada pela sala de espera
             renderPatientQueue();
             renderPatientToCallSelect();
             updateCallControls();
-             // Se o profissional já estava logado no localStorage, a UI já foi atualizada, mas garantimos
             if (loggedInProfessional && loggedInProfessionalNameEl) {
                  if (loginSection) loginSection.classList.add('hidden');
                  if (mainContent) mainContent.classList.remove('hidden');
-                 // Exibe Nome (Role)
                  loggedInProfessionalNameEl.textContent = `${loggedInProfessional.name} (${loggedInProfessional.role})`;
             }
         });
@@ -169,11 +175,10 @@
 
         socket.on('patient_called', (calledPatientInfo) => {
             console.log('Paciente sendo chamado:', calledPatientInfo);
-            currentlyCallingPatient = calledPatientInfo; // Inclui {name, role} de quem chamou
+            currentlyCallingPatient = calledPatientInfo;
              if (callingPatientNameEl) callingPatientNameEl.textContent = currentlyCallingPatient ? currentlyCallingPatient.name : '';
             updateCallControls();
             renderPatientToCallSelect();
-             // A fila já deve ter sido atualizada via 'queue_updated' antes ou logo depois
         });
 
         socket.on('call_stopped', () => {
@@ -189,20 +194,21 @@
             console.error('Erro do servidor:', message);
         });
 
+        // Não é necessário ouvir por 'video_updated' no painel do médico
+
         // --- Funções de UI e Ações ---
 
         function initializeProfessionalPanel() {
-             // Atribui elementos DOM uma vez
              loginSection = document.getElementById('loginSection');
              mainContent = document.getElementById('mainContent');
              loggedInProfessionalNameEl = document.getElementById('loggedInProfessionalName');
-             professionalNameInputEl = document.getElementById('professionalNameInput'); // ID atualizado
-             professionalRoleSelectEl = document.getElementById('professionalRoleSelect'); // Novo elemento
+             professionalNameInputEl = document.getElementById('professionalNameInput');
+             professionalRoleSelectEl = document.getElementById('professionalRoleSelect');
              patientNameInput = document.getElementById('patientName');
              highPriorityCheckbox = document.getElementById('highPriority');
              patientQueueDisplay = document.getElementById('patientQueueDisplay');
              patientToCallSelect = document.getElementById('patientToCallSelect');
-             youtubeLinkInput = document.getElementById('youtubeLink');
+             youtubeLinkInput = document.getElementById('youtubeLink'); // Atribuído aqui
              callPatientBtn = document.getElementById('callPatientBtn');
              callInProgressControls = document.getElementById('callInProgressControls');
              callingPatientNameEl = document.getElementById('callingPatientName');
@@ -210,42 +216,41 @@
              if (loggedInProfessional && socket.connected) {
                 if (loginSection) loginSection.classList.add('hidden');
                 if (mainContent) mainContent.classList.remove('hidden');
-                 if (loggedInProfessionalNameEl) loggedInProfessionalNameEl.textContent = `${loggedInProfessional.name} (${loggedInProfessional.role})`; // Exibe Nome (Role)
+                 if (loggedInProfessionalNameEl) loggedInProfessionalNameEl.textContent = `${loggedInProfessional.name} (${loggedInProfessional.role})`;
             } else {
                  if (loginSection) loginSection.classList.remove('hidden');
                  if (mainContent) mainContent.classList.add('hidden');
-                 // Limpa os campos de login ao mostrar a tela de login
                  if (professionalNameInputEl) professionalNameInputEl.value = '';
-                 if (professionalRoleSelectEl) professionalRoleSelectEl.value = 'Doutor'; // Reseta para Doutor
+                 if (professionalRoleSelectEl) professionalRoleSelectEl.value = 'Doutor';
             }
         }
 
-        function loginProfessional() { // Função atualizada
+        function loginProfessional() {
             if (!professionalNameInputEl || !professionalRoleSelectEl) {
                  console.error('Elementos de login não encontrados!');
                  alert('Erro interno: Elementos de login não encontrados.');
                  return;
             }
             const name = professionalNameInputEl.value.trim();
-            const role = professionalRoleSelectEl.value; // Pega o valor selecionado
+            const role = professionalRoleSelectEl.value;
 
             if (name && role) {
-                 loggedInProfessional = { name: name, role: role }; // Cria o objeto do profissional
-                 localStorage.setItem('ubsProfessionalInfo', JSON.stringify(loggedInProfessional)); // Armazena o objeto
-                 initializeProfessionalPanel(); // Atualiza a UI
-                 socket.emit('professional_login', loggedInProfessional); // Envia o objeto completo para o servidor
+                 loggedInProfessional = { name: name, role: role };
+                 localStorage.setItem('ubsProfessionalInfo', JSON.stringify(loggedInProfessional));
+                 initializeProfessionalPanel();
+                 socket.emit('professional_login', loggedInProfessional);
             } else {
                 alert('Por favor, insira seu nome e selecione seu papel.');
             }
         }
 
-        function logoutProfessional() { // Função atualizada
+        function logoutProfessional() {
             if (confirm('Tem certeza que deseja sair? Sua sessão será encerrada, mas a fila permanecerá.')) {
-                socket.emit('professional_logout'); // Notifica o servidor
+                socket.emit('professional_logout');
                 loggedInProfessional = null;
                 currentlyCallingPatient = null;
                 localStorage.removeItem('ubsProfessionalInfo');
-                initializeProfessionalPanel(); // Volta para a tela de login
+                initializeProfessionalPanel();
                 updateCallControls();
             }
         }
@@ -266,7 +271,6 @@
                 return;
             }
 
-            // Envia os dados do novo paciente para o servidor (o servidor adiciona addedBy)
             socket.emit('add_patient', {
                 name: name,
                 priority: isHighPriority ? 'high' : 'normal'
@@ -276,7 +280,6 @@
             highPriorityCheckbox.checked = false;
         }
 
-        // A remoção de paciente continua via servidor.
         function removePatient(patientId) {
             if (!socket.connected) {
                  alert('Não conectado ao servidor. Tente recarregar a página.');
@@ -303,7 +306,8 @@
                     <span class="flex-1 font-medium text-gray-800 mb-2 md:mb-0 text-center md:text-left">
                          ${patient.name}
                          <span class="text-sm text-gray-600 italic">(adicionado por ${patient.addedBy ? patient.addedBy.name + ' (' + patient.addedBy.role + ')' : 'N/A'})</span>
-                    </span> <span class="w-full md:w-28 text-center md:text-left text-sm font-semibold ${patient.priority === 'high' ? 'text-red-600' : 'text-green-700'} mb-2 md:mb-0">
+                    </span>
+                    <span class="w-full md:w-28 text-center md:text-left text-sm font-semibold ${patient.priority === 'high' ? 'text-red-600' : 'text-green-700'} mb-2 md:mb-0">
                         ${patient.priority === 'high' ? 'ALTA PRIORIDADE' : 'NORMAL'}
                     </span>
                     <button onclick="removePatient('${patient.id}')" class="bg-red-500 text-white px-3 py-1.5 rounded-md text-xs hover:bg-red-600 transition-colors duration-300 w-full md:w-auto flex items-center justify-center">
@@ -319,19 +323,16 @@
             if (!patientToCallSelect) return;
              patientToCallSelect.innerHTML = '<option value="">Selecione um paciente seu</option>';
 
-             if (!loggedInProfessional) { // Não mostra opções se não estiver logado
+             if (!loggedInProfessional) {
                  patientToCallSelect.disabled = true;
                  return;
              }
 
-            // Filtra a fila para mostrar APENAS os pacientes adicionados por ESTE profissional
             const myPatients = patientQueue.filter(patient =>
                  patient.addedBy && patient.addedBy.name === loggedInProfessional.name && patient.addedBy.role === loggedInProfessional.role
-                // Opcional: adicionar filtro !currentlyCallingPatient para remover da lista de seleção enquanto chamando
             );
 
             myPatients.forEach(patient => {
-                 // Garante que o paciente atualmente chamado não apareça na lista de seleção
                  if (!currentlyCallingPatient || patient.id !== currentlyCallingPatient.id) {
                     const option = document.createElement('option');
                     option.value = patient.id;
@@ -340,7 +341,6 @@
                  }
             });
 
-             // Desabilita o select se não houver pacientes próprios ou se já estiver chamando alguém
             patientToCallSelect.disabled = myPatients.filter(p => !currentlyCallingPatient || p.id !== currentlyCallingPatient.id).length === 0 || currentlyCallingPatient !== null;
         }
 
@@ -391,8 +391,6 @@
             if (!callPatientBtn || !callInProgressControls || !patientToCallSelect) return;
 
             if (currentlyCallingPatient) {
-                 // Verifica se o paciente sendo chamado foi adicionado por ESTE profissional
-                 // E se ESTE profissional é quem INICIOU a chamada atual
                  const calledByCurrentProfessional = currentlyCallingPatient.calledBy &&
                                                      currentlyCallingPatient.calledBy.name === loggedInProfessional?.name &&
                                                      currentlyCallingPatient.calledBy.role === loggedInProfessional?.role;
@@ -401,13 +399,11 @@
                     callPatientBtn.classList.add('hidden');
                     callInProgressControls.classList.remove('hidden');
                     if (callingPatientNameEl) callingPatientNameEl.textContent = currentlyCallingPatient.name;
-                    patientToCallSelect.disabled = true; // Desabilita select enquanto chama
+                    patientToCallSelect.disabled = true;
                  } else {
-                     // Se outro profissional está chamando, esconde os controles de chamada deste profissional
                      callPatientBtn.classList.remove('hidden');
                      callInProgressControls.classList.add('hidden');
-                     if (callingPatientNameEl) callingPatientNameEl.textContent = ''; // Limpa o nome chamado
-                     // Re-habilita o select, mas ele só mostrará os próprios pacientes disponíveis que não estão sendo chamados por outros
+                     if (callingPatientNameEl) callingPatientNameEl.textContent = '';
                       const myAvailablePatients = patientQueue.filter(p =>
                           p.addedBy && p.addedBy.name === loggedInProfessional?.name && p.addedBy.role === loggedInProfessional?.role &&
                           (!currentlyCallingPatient || p.id !== currentlyCallingPatient.id)
@@ -415,49 +411,48 @@
                       patientToCallSelect.disabled = myAvailablePatients.length === 0;
                  }
             } else {
-                // Ninguém sendo chamado
                 callPatientBtn.classList.remove('hidden');
                 callInProgressControls.classList.add('hidden');
                 if (callingPatientNameEl) callingPatientNameEl.textContent = '';
-                 // Habilita o select apenas se houver pacientes próprios na fila
                   const myPatientsInQueue = patientQueue.filter(p => p.addedBy && p.addedBy.name === loggedInProfessional?.name && p.addedBy.role === loggedInProfessional?.role);
                  patientToCallSelect.disabled = myPatientsInQueue.length === 0;
             }
         }
 
-
-        function updateVideo() {
+        function updateVideo() { // Função atualizada
             if (!socket.connected) {
                  alert('Não conectado ao servidor. Tente recarregar a página.');
                  return;
             }
              if (!loggedInProfessional) {
-                 alert('Você precisa estar logado para atualizar o vídeo.');
+                 alert('Você precisa estar logado para atualizar a playlist.');
                  return;
             }
             if(!youtubeLinkInput) return;
             const link = youtubeLinkInput.value.trim();
             if (link === "") {
-                 alert('Por favor, insira um link do YouTube válido.');
+                 alert('Por favor, insira um link de playlist do YouTube.');
                  return;
             }
+            // Envia o link da playlist para o servidor
             socket.emit('update_video', link);
-            youtubeLinkInput.value = '';
-             alert('Solicitação para atualizar vídeo enviada.');
+            youtubeLinkInput.value = ''; // Limpa o input após enviar
+             alert('Solicitação para atualizar playlist enviada.');
         }
 
-        function removeVideo() {
+        function removeVideo() { // Função atualizada
              if (!socket.connected) {
                  alert('Não conectado ao servidor. Tente recarregar a página.');
                  return;
             }
              if (!loggedInProfessional) {
-                 alert('Você precisa estar logado para remover o vídeo.');
+                 alert('Você precisa estar logado para remover a playlist.');
                  return;
             }
-            if (confirm('Tem certeza que deseja remover o vídeo da sala de espera?')) {
+            if (confirm('Tem certeza que deseja remover a playlist de vídeo da sala de espera?')) {
+                 // Envia uma string vazia para indicar remoção
                  socket.emit('update_video', '');
-                 alert('Solicitação para remover vídeo enviada.');
+                 alert('Solicitação para remover playlist enviada.');
             }
         }
 
