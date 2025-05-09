@@ -81,7 +81,7 @@
 
         // Variáveis para o Player do YouTube
         let player; // Objeto do player do YouTube
-        let normalVolume = 60; // Volume normal do vídeo (0-100)
+        let normalVolume = 40; // Volume normal do vídeo (0-100)
         let reducedVolume = 10; // Volume reduzido durante a chamada (0-100)
         let currentPlaylistUrl = null; // Armazena a URL da playlist atual
 
@@ -258,7 +258,7 @@
                 utterance.lang = voices[0].lang;
             } else {
                  utterance.lang = 'pt-BR';
-                 console.warn("Nenhuma voz selecionada, usando lang paão pt-BR.");
+                 console.warn("Nenhuma voz selecionada, usando lang padrão pt-BR.");
             }
 
             // Define o volume da chamada para o máximo
@@ -301,7 +301,7 @@
                     player = null; // Limpa a referência
                     console.log("Player do YouTube destruído (playlist removida).");
                 }
-                 // Mostra a mensagem paão
+                 // Mostra a mensagem padrão
                 if (noPlaylistMessageEl) noPlaylistMessageEl.style.display = 'flex'; // Usa flex para centralizar
             }
         }
@@ -327,7 +327,7 @@
             });
         }
 
-        function updateProfessionalDisplay(professionalNamesAnoles) {
+        function updateProfessionalDisplay(professionalNamesAndRoles) {
             if (professionalNamesAndRoles && professionalNamesAndRoles.length > 0) {
                  professionalsOnlineDisplayEl.textContent = professionalNamesAndRoles.join(', ');
             } else {
