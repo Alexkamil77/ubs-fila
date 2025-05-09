@@ -15,23 +15,27 @@ const io = socketIo(server, {
 // Servir arquivos estáticos da pasta 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
-let patientQueue = [];
-let currentlyCallingPatient = null;
-// Alterado para armazenar a URL DE EMBED CORRETA da playlist ou null
-let youtubePlaylistEmbedUrl = null;
-let connectedProfessionals = {};
+let patientQueue = []; // Fila de pacientes na memória do servidor
+let currentlyCallingPatient = null; // Paciente sendo chamado no momento
+// Alterado para armazenar a URL COMPLETA da playlist ou null
+let youtubePlaylistUrl = null;
+let connectedProfessionals = {}; // Para rastrear profissionais conectados: { socketId: { name: 'Nome', role: 'Role' } }
+
 
 io.on('connection', (socket) => {
     console.log('Novo cliente conectado:', socket.id);
 
+    // --- Lógica de Conexão e Estado Inicial ---
+    // Enviar o estado atual para o cliente que acabou de conectar
     socket.emit('current_state', {
         patients: patientQueue,
         calling: currentlyCallingPatient,
-        // Envia a URL DE EMBED CORRETA da playlist
-        playlistEmbedUrl: youtubePlaylistEmbedUrl,
+        // Envia a URL da playlist
+        playlistUrl: youtubePlaylistUrl,
         professionals: Object.values(connectedProfessionals)
     });
 
+    // --- Eventos do Profissional (Médico/Enfermeira) ---
     socket.on('professional_login', (professionalInfo) => {
          if (!professionalInfo || !professionalInfo.name || !professionalInfo.role) {
              socket.emit('error_message', 'Informações de login inválidas.');
@@ -146,25 +150,26 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Evento para atualizar o vídeo - AGORA GERA A URL DE EMBED PADRÃO
+    // Evento para atualizar o vídeo - AGORA ESPERA A URL DA PLAYLIST
     socket.on('update_video', (url) => {
          const professionalInfo = connectedProfessionals[socket.id];
          if (!professionalInfo) {
             socket.emit('error_message', 'Você precisa estar logado para atualizar o vídeo.');
             return;
         }
+        // Regex para validar URLs de playlist do YouTube
         const playlistRegex = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/playlist\?list=|youtu\.be\/.*?[?&]list=)([a-zA-Z0-9_-]+)/;
         const match = url ? url.match(playlistRegex) : null;
 
         if (url && match) {
             const playlistId = match[1];
-            // **URL DE EMBED PADRÃO DO YOUTUBE PARA PLAYLISTS**
-            youtubePlaylistEmbedUrl = `https://www.youtube.com/embed/?listType=playlist&list=${playlistId}&autoplay=1&mute=1&loop=1&controls=1&showinfo=0&rel=0`;
-            io.emit('video_updated', youtubePlaylistEmbedUrl); // Envia a URL de embed para a sala
-            console.log(`Playlist do YouTube atualizada por "${professionalInfo.name}": ${youtubePlaylistEmbedUrl}`);
+            // Armazena a URL de embed da playlist
+            youtubePlaylistUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&mute=1&loop=1`; // URL de embed para playlist
+            io.emit('video_updated', youtubePlaylistUrl); // Envia a URL de embed para a sala
+            console.log(`Playlist do YouTube atualizada por "${professionalInfo.name}": ${youtubePlaylistUrl}`);
         } else if (!url) {
-             youtubePlaylistEmbedUrl = null;
-             io.emit('video_updated', youtubePlaylistEmbedUrl);
+             youtubePlaylistUrl = null;
+             io.emit('video_updated', youtubePlaylistUrl);
              console.log(`Vídeo/Playlist removido por "${professionalInfo.name}".`);
         }
         else {
@@ -173,6 +178,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- Lógica de Desconexão ---
     socket.on('disconnect', () => {
         const professionalInfo = connectedProfessionals[socket.id];
         if (professionalInfo) {
